@@ -65,10 +65,11 @@ def handler(event, context):
 
         if to_send > 0:
             sendJewel(account, payout_account, to_send, nonce, w3)
+            now = int(time.time())
             try:
                 last_payout_time = payouts_table.get_item(Key={"address_": account.address})["Item"]["time"]
             except:
-                last_payout_time = 0
+                last_payout_time = now
             try:
                 payouts_table.delete_item(Key={"address_": account.address})
             except:
@@ -76,8 +77,8 @@ def handler(event, context):
             payouts_table.put_item(Item={
                 "address_": account.address,
                 "amount_": str(to_send/10**18),
-                "time_": str(int(time.time())),
-                "time_delta": str(int(time.time()) - int(last_payout_time)),
+                "time_": str(now),
+                "time_delta": str(now - int(last_payout_time)),
             })
             total_sent += to_send/10**18
             print(f"{to_send/10**18} Jewel payed to main account")
