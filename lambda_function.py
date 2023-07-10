@@ -28,8 +28,9 @@ def handler(event, context):
     settings_table = init_settings_table()
     gas_buffer = int(settings_table.get_item(Key={"key_": "seller_settings"})["Item"]["min_buffer"])
     accounts = event["users"]
+    total_sent = 0
     for user in accounts:
-        payout_account = account_table.get_item(Key={"address": user})["pay_to"]
+        payout_account = account_table.get_item(Key={"address_": user})["Item"]["pay_to"]
         account = get_account(user, w3)
         nonce = w3.eth.get_transaction_count(account.address)
         print("")
@@ -37,7 +38,7 @@ def handler(event, context):
         c+=1
         for item in sellables:
             decimals = 0
-            amount = getItemAmount(account, item)
+            amount = getItemAmount(account, item, w3)
             if item in decimals_data:
                 decimals = decimals_data[item]
             print(f"{item}: {amount/10**decimals}")
@@ -52,7 +53,7 @@ def handler(event, context):
 
             if amount != 0:
                 try:
-                    sellItem(account, item, amount, nonce)
+                    sellItem(account, item, amount, nonce, w3)
                     nonce+=1
                     print(f"Sold {item}")
                 except Exception as error:
@@ -61,15 +62,17 @@ def handler(event, context):
             else:
                 pass
         balance = getJewelBalance(account, w3)
+        print(f"Account has {balance/10**18} Jewel")
         to_send = balance - gas_buffer*10**18
         now = int(time.time())
         try:
-            last_payout_time = payouts_table.get_item(Key={"address_": account.address})["Item"]["time"]
+            last_payout_time = payouts_table.get_item(Key={"address_": account.address})["Item"]["time_"]
         except:
             last_payout_time = now
 
         if to_send > 0:
             sendJewel(account, payout_account, to_send, nonce, w3)
+            print(f"Sent {to_send/10**18} Jewel to main account")
             total_sent += to_send/10**18
         else:
             print("No jewel to pay")
@@ -78,14 +81,13 @@ def handler(event, context):
             payouts_table.delete_item(Key={"address_": account.address})
         except:
             pass
-            payouts_table.put_item(Item={
-                "address_": account.address,
-                "amount_": str(to_send/10**18),
-                "time_": str(now),
-                "time_delta": str(now - int(last_payout_time)),
-            })
-            total_sent += to_send/10**18
-            print(f"{to_send/10**18} Jewel payed to main account")
-        
 
+        payouts_table.put_item(Item={
+            "address_": account.address,
+            "amount_": str(to_send/10**18),
+            "time_": str(now),
+            "time_delta": str(now - int(last_payout_time)),
+        })
+        
+    print(f"Total sent: {total_sent} Jewel")
     return "Done"

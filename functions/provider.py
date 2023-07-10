@@ -1,6 +1,6 @@
 from web3 import Web3
 from web3.middleware import geth_poa_middleware
-from functions.data import f, account_table
+from functions.data import f, init_account_table
 
 def get_provider(network):
     if network == "dfk":
@@ -13,6 +13,7 @@ def get_provider(network):
     return w3
 
 def get_account(address, w3):
+    account_table = init_account_table()
     key = account_table.query(
             KeyConditionExpression="address_ = :address_",
             ExpressionAttributeValues={

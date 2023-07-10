@@ -50,6 +50,7 @@ def sellItem(account, item, amount, nonce, w3):
     signed_tx = w3.eth.account.sign_transaction(tx, account.key)
     hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
     hash = w3.toHex(hash)
+    w3.eth.wait_for_transaction_receipt(hash)
 
 def getItemAmount(account, item, w3):
     contract = w3.eth.contract(address= items[item], abi=ERC20ABI)
