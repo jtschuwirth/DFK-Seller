@@ -62,18 +62,22 @@ def handler(event, context):
                 pass
         balance = getJewelBalance(account, w3)
         to_send = balance - gas_buffer*10**18
+        now = int(time.time())
+        try:
+            last_payout_time = payouts_table.get_item(Key={"address_": account.address})["Item"]["time"]
+        except:
+            last_payout_time = now
 
         if to_send > 0:
             sendJewel(account, payout_account, to_send, nonce, w3)
-            now = int(time.time())
-            try:
-                last_payout_time = payouts_table.get_item(Key={"address_": account.address})["Item"]["time"]
-            except:
-                last_payout_time = now
-            try:
-                payouts_table.delete_item(Key={"address_": account.address})
-            except:
-                pass
+            total_sent += to_send/10**18
+        else:
+            print("No jewel to pay")
+        
+        try:
+            payouts_table.delete_item(Key={"address_": account.address})
+        except:
+            pass
             payouts_table.put_item(Item={
                 "address_": account.address,
                 "amount_": str(to_send/10**18),
@@ -82,8 +86,6 @@ def handler(event, context):
             })
             total_sent += to_send/10**18
             print(f"{to_send/10**18} Jewel payed to main account")
-        else:
-            print("No jewel to pay")
         
 
     return "Done"
