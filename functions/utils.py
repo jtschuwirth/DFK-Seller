@@ -13,10 +13,10 @@ decimals_data = json.load(decimalsJson)
 ERC20Json = open("abi/ERC20.json")
 ERC20ABI = json.load(ERC20Json)
 
-def sendJewel(account, payout_account, amount, nonce, w3):
+def sendJewel(account, payout_address, amount, nonce, w3):
     tx = {
         "from": account.address,
-        "to": payout_account,
+        "to": payout_address,
         "value": amount,
         "nonce": nonce,
         "chainId": chainId

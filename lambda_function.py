@@ -1,6 +1,6 @@
 from functions.provider import get_provider, get_account
 from functions.utils import sellItem, getItemAmount, checkAllowance, addAllowance, getJewelBalance, sendJewel
-from functions.data import init_account_table, init_settings_table, init_payouts_table
+from functions.data import init_account_table, init_settings_table, init_payouts_table, init_managers_table
 import json
 import time
 
@@ -26,11 +26,12 @@ def handler(event, context):
     account_table = init_account_table()
     payouts_table = init_payouts_table()
     settings_table = init_settings_table()
+    managers_table = init_managers_table()
     gas_buffer = int(settings_table.get_item(Key={"key_": "seller_settings"})["Item"]["min_buffer"])
     accounts = event["users"]
     total_sent = 0
     for user in accounts:
-        payout_account = account_table.get_item(Key={"address_": user})["Item"]["pay_to"]
+        payout_address = account_table.get_item(Key={"address_": user})["Item"]["pay_to"]
         account = get_account(user, w3)
         nonce = w3.eth.get_transaction_count(account.address)
         print("")
@@ -70,10 +71,22 @@ def handler(event, context):
         except:
             last_payout_time = now
 
+        tax = managers_table.get_item(Key={"address_": payout_address})["Item"]["tax"]
+        tax_receiver_address = settings_table.get_item(Key={"key_": "seller_settings"})["Item"]["tax_receiver"]
         if to_send > 0:
-            sendJewel(account, payout_account, to_send, nonce, w3)
-            print(f"Sent {to_send/10**18} Jewel to main account")
-            total_sent += to_send/10**18
+            if tax == 0:
+                sendJewel(account, payout_address, to_send, nonce, w3)
+                print(f"Sent {to_send/10**18} Jewel to manager")
+                total_sent += to_send/10**18
+            else:
+                sendJewel(account, payout_address, int(to_send*(1-tax/100)), nonce, w3)
+                nonce+=1
+                print(f"Sent {to_send*(1-tax/100)/10**18} Jewel to manager")
+                total_sent += to_send*(1-tax/100)/10**18
+                sendJewel(account, tax_receiver_address, int(to_send*(tax/100)), nonce, w3)
+                nonce+=1
+                print(f"Sent {to_send*(tax/100)/10**18} Jewel to tax receiver")
+                total_sent += to_send*(tax/100)/10**18
         else:
             print("No jewel to pay")
         
