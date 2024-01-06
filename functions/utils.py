@@ -2,21 +2,15 @@ from decimal import Decimal
 import json
 import math 
 import time
+from functions.classes.APIService import APIService
+
+from functions.classes.RPCProvider import RPCProvider
 
 RouterJson = open("abi/UniswapV2Router02.json")
 RouterABI = json.load(RouterJson)
 
-itemsJson = open("data/items.json")
-items = json.load(itemsJson)
-
-decimalsJson = open("data/decimals.json")
-decimals_data = json.load(decimalsJson)
-
 ERC20Json = open("abi/ERC20.json")
 ERC20ABI = json.load(ERC20Json)
-
-contractsJson = open("data/contracts.json")
-contracts = json.load(contractsJson)
 
 def sendJewel(account, payout_address, amount, RPCProvider):
     tx = {
@@ -36,12 +30,12 @@ def sendJewel(account, payout_address, amount, RPCProvider):
 def getJewelBalance(account, RPCProvider):
     return int(RPCProvider.w3.eth.get_balance(account.address))
 
-def sellItemFromLiquidity(account, amount, token, expected_cost, RPCProvider):
-    RouterContract = RPCProvider.w3.eth.contract(address=contracts["RouterAddress"][RPCProvider.chain], abi=RouterABI)
+def sellItemFromLiquidity(account, amount, token, expected_cost, apiService: APIService, RPCProvider: RPCProvider):
+    RouterContract = RPCProvider.w3.eth.contract(address=apiService.contracts["Router"]["address"], abi=RouterABI)
     tx = RouterContract.functions.swapExactTokensForETH(
         amount,
         expected_cost,
-        [token.address, items["Jewel"][RPCProvider.chain]],
+        [token.address, apiService.tokens["Jewel"].address],
         account.address,
         int(time.time()+60)
         
@@ -56,8 +50,9 @@ def sellItemFromLiquidity(account, amount, token, expected_cost, RPCProvider):
     hash = RPCProvider.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
     hash = RPCProvider.w3.to_hex(hash)
     RPCProvider.w3.eth.wait_for_transaction_receipt(hash)
-def getItemAmount(account, item, RPCProvider):
-    contract = RPCProvider.w3.eth.contract(address= items[item], abi=ERC20ABI)
+
+def getItemAmount(account, token, RPCProvider):
+    contract = RPCProvider.w3.eth.contract(address= token.address, abi=ERC20ABI)
     return int(contract.functions.balanceOf(account.address).call())
 
 def checkAllowance(account, token, address, abi, RPCProvider):
